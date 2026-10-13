@@ -175,6 +175,93 @@ app.get('/api/check/:key', async (req, res) => {
         res.status(500).json({ valid: false, error: 'server_error' });
     }
 });
+// === ELIMINAR KEY (SOLO ADMIN) ===
+app.get('/api/delete', async (req, res) => {
+    try {
+        const { key, token } = req.query;
+
+        if (!token || token !== ADMIN_TOKEN) {
+            return res.status(401).json({ error: 'unauthorized', message: 'Invalid admin token' });
+        }
+
+        if (!key) {
+            return res.status(400).json({ error: 'bad_request', message: 'Missing key' });
+        }
+
+        const deleted = await Key.findOneAndDelete({ key: key });
+
+        if (!deleted) {
+            return res.json({ success: false, message: 'Key not found' });
+        }
+
+        res.json({ success: true, message: 'Key deleted permanently', key: key });
+    } catch (err) {
+        res.status(500).json({ error: 'server_error' });
+    }
+});
+
+// === LIBERAR DISPOSITIVO (SOLO ADMIN) ===
+app.get('/api/unbind', async (req, res) => {
+    try {
+        const { key, token } = req.query;
+
+        if (!token || token !== ADMIN_TOKEN) {
+            return res.status(401).json({ error: 'unauthorized', message: 'Invalid admin token' });
+        }
+
+        if (!key) {
+            return res.status(400).json({ error: 'bad_request', message: 'Missing key' });
+        }
+
+        const keyData = await Key.findOne({ key: key });
+
+        if (!keyData) {
+            return res.json({ success: false, message: 'Key not found' });
+        }
+
+        keyData.deviceId = null;
+        keyData.deviceModel = null;
+        keyData.activated = false;
+        await keyData.save();
+
+        res.json({ success: true, message: 'Device unbound, key is free', key: key });
+    } catch (err) {
+        res.status(500).json({ error: 'server_error' });
+    }
+});
+
+// === VER INFO DE UNA KEY (SOLO ADMIN) ===
+app.get('/api/info', async (req, res) => {
+    try {
+        const { key, token } = req.query;
+
+        if (!token || token !== ADMIN_TOKEN) {
+            return res.status(401).json({ error: 'unauthorized', message: 'Invalid admin token' });
+        }
+
+        if (!key) {
+            return res.status(400).json({ error: 'bad_request', message: 'Missing key' });
+        }
+
+        const keyData = await Key.findOne({ key: key });
+
+        if (!keyData) {
+            return res.json({ found: false, message: 'Key not found' });
+        }
+
+        res.json({
+            found: true,
+            key: keyData.key,
+            expires: keyData.expiresAt.toISOString(),
+            deviceId: keyData.deviceId,
+            deviceModel: keyData.deviceModel,
+            activated: keyData.activated,
+            remaining_days: Math.max(0, Math.ceil((keyData.expiresAt - Date.now()) / (24 * 60 * 60 * 1000)))
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'server_error' });
+    }
+});
 
 // === HEALTH CHECK ===
 app.get('/', (req, res) => {
