@@ -4,6 +4,10 @@ const crypto = require('crypto');
 
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+    console.log('REQUEST: ' + req.method + ' ' + req.url + ' from ' + req.ip);
+    next();
+});
 
 // === CONFIGURACIÓN ===
 const ADMIN_TOKEN = 'dxcam-admin-998877';
