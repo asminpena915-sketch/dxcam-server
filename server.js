@@ -35,6 +35,13 @@ function hmacSign(valid, remainingMs) {
     return crypto.createHmac('sha256', HMAC_SECRET).update(data).digest('hex');
 }
 
+// === FUNCIÓN GENERAR TOKEN DE ACTIVACIÓN ===
+function generateActivationToken(key, deviceId) {
+    const timestamp = Date.now();
+    const data = key + ':' + deviceId + ':' + timestamp;
+    return crypto.createHmac('sha256', HMAC_SECRET).update(data).digest('hex');
+}
+
 // === CREAR KEY (SOLO ADMIN) ===
 app.get('/api/activate', async (req, res) => {
     try {
@@ -137,11 +144,13 @@ app.post('/api/verify', async (req, res) => {
 
         const remainingMs = keyData.expiresAt - Date.now();
         const sig = hmacSign(true, remainingMs);
+        const activationToken = generateActivationToken(key, keyData.deviceId);
 
         res.json({
             valid: true,
             remaining_ms: remainingMs,
-            sig: sig
+            sig: sig,
+            token: activationToken
         });
     } catch (err) {
         res.status(500).json({ valid: false, error: 'server_error' });
@@ -165,16 +174,19 @@ app.get('/api/check/:key', async (req, res) => {
 
         const remainingMs = keyData.expiresAt - Date.now();
         const sig = hmacSign(true, remainingMs);
+        const activationToken = generateActivationToken(key, keyData.deviceId);
 
         res.json({
             valid: true,
             remaining_ms: remainingMs,
-            sig: sig
+            sig: sig,
+            token: activationToken
         });
     } catch (err) {
         res.status(500).json({ valid: false, error: 'server_error' });
     }
 });
+
 // === ELIMINAR KEY (SOLO ADMIN) ===
 app.get('/api/delete', async (req, res) => {
     try {
@@ -265,11 +277,11 @@ app.get('/api/info', async (req, res) => {
 
 // === HEALTH CHECK ===
 app.get('/', (req, res) => {
-    res.json({ status: 'ok', server: 'DXCam License Server v2' });
+    res.json({ status: 'ok', server: 'DXCam License Server v3' });
 });
 
 // === INICIAR ===
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log('DXCam License Server running on port ' + PORT);
+    console.log('DXCam License Server v3 running on port ' + PORT);
 });
